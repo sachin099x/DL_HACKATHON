@@ -7,4 +7,4 @@ tensorflow
 xgboost
 joblib
 imbalanced-learn
-pywt
+PyWavelets
