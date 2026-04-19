@@ -25,23 +25,50 @@ def load_assets():
 ae, anomaly_clf, fault_clf, scaler = load_assets()
 
 # --- Feature Extraction Function (Matches your Notebook) ---
-def extract_features(signal, fs):
-    signal = np.array(signal).flatten()
-    rms = np.sqrt(np.mean(signal**2))
-    peak = np.max(np.abs(signal))
-    kurt = kurtosis(signal)
-    crest = peak / (rms + 1e-8)
+# Updated Prediction Block for app.py
+if uploaded_file:
+    mat = sio.loadmat(uploaded_file, squeeze_me=True, struct_as_record=False)
     
-    # Frequency domain
-    freqs, psd = welch(signal, fs=fs, nperseg=min(1024, len(signal)))
-    dom_freq = freqs[np.argmax(psd)]
-    
-    # Return features in the exact order expected by your model
-    return pd.DataFrame([{
-        'rms': rms, 'kurtosis': kurt, 'crest_factor': crest, 
-        'dom_freq': dom_freq, 'peak': peak, 'mean': np.mean(signal)
-        # ... Add all 58 features used in feature_columns from your notebook
-    }])
+    if 'DS' in mat:
+        p_data = mat['DS']
+        # Extract raw signal and metadata
+        signal = p_data.rawData[0] if isinstance(p_data.rawData, np.ndarray) else p_data.rawData
+        fs = p_data.samplingRate[0] if isinstance(p_data.samplingRate, np.ndarray) else p_data.samplingRate
+        rpm = p_data.RPM[0] if isinstance(p_data.RPM, np.ndarray) else p_data.RPM
+        
+        # 1. Run the massive extraction function you just provided
+        features_dict = extract_signal_features(signal, fs, rpm=rpm, placement_name='DS')
+        
+        # 2. Add the 'asset_encoded' column (Model expects it)
+        features_dict['asset_encoded'] = 0 
+        
+        # 3. Create DataFrame and FORCE the column order
+        features_df = pd.DataFrame([features_dict])
+        
+        # List of columns exactly as they appear in your Notebook's training set
+        # This list must have all 58 features in the right order
+        column_order = [
+            'mean', 'std', 'rms', 'peak', 'peak_to_peak', 'crest_factor', 'kurtosis', 
+            'skewness', 'dominant_freq', 'max_psd', 'mean_psd', 'top_freq_1', 'top_freq_2', 
+            'top_freq_3', 'top_psd_1', 'top_psd_2', 'top_psd_3', 'spectral_entropy', 
+            'low_band_energy', 'mid_band_energy', 'high_band_energy', 'harmonic_ratio_1', 
+            'harmonic_ratio_2', 'envelope_peak_freq', 'envelope_peak_amp', 'bpfo_amp', 
+            'bpfo_harmonic_2_amp', 'bpfo_harmonic_3_amp', 'bpfi_amp', 'bpfi_harmonic_2_amp', 
+            'bpfi_harmonic_3_amp', 'env_harmonic_1', 'env_harmonic_2', 'env_harmonic_3', 
+            'very_low_band_energy', 'low_mid_band_energy', 'mid_high_band_energy', 
+            'very_high_band_energy', 'wavelet_energy_1', 'wavelet_energy_2', 
+            'wavelet_energy_3', 'wavelet_energy_4', 'window_rms_std', 'window_rms_max', 
+            'is_ds', 'is_fs', 'ds_weighted_rms', 'fs_weighted_rms', 'ds_weighted_kurtosis', 
+            'fs_weighted_kurtosis', 'ds_weighted_peak', 'fs_weighted_peak', 
+            'placement_interaction_rms', 'placement_interaction_kurtosis', 
+            'sampling_rate', 'rpm', 'asset_encoded'
+        ]
+        
+        # Filter and Reorder
+        features_final = features_df[column_order]
+
+        # 4. Now the scaler will work!
+        feat_scaled = scaler.transform(features_final)
 
 # --- UI Sidebar & Upload ---
 st.sidebar.header("Instructions")
