@@ -54,8 +54,8 @@ if uploaded_file:
     mat = sio.loadmat(uploaded_file, squeeze_me=True, struct_as_record=False)
     
     # Assuming standard DS placement for demo
-    if 'DS' in mat.__dict__:
-        p_data = mat.DS
+    if 'DS' in mat:
+        p_data = mat['DS']
         signal = p_data.rawData[0] if isinstance(p_data.rawData, np.ndarray) else p_data.rawData
         fs = p_data.samplingRate[0] if isinstance(p_data.samplingRate, np.ndarray) else p_data.samplingRate
         
